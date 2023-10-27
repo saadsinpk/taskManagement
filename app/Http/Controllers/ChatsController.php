@@ -193,7 +193,7 @@ class ChatsController extends Controller
                         ->where('user_chat', $userLogin->id);
                 })->orderBy('created_at', 'desc')->first();
 
-                $count = Chats::where('user_chat', $userLogin->id)
+                $count = Chats::where('user_chat', $userLogin->id)->where('user_id', $user->id)
                     ->where('is_read', 0)
                     ->count();
                 if ($last_message) {
@@ -283,7 +283,7 @@ class ChatsController extends Controller
                         ->where('user_chat', $userLogin);
                 })->orderBy('created_at', 'desc')->first();
 
-                $count = Chats::where('user_chat', $userLogin)
+                $count = Chats::where('user_chat', $userLogin)->where('user_id', $user->id)
                     ->where('is_read', 0)
                     ->count();
                 if ($last_message) {
