@@ -186,7 +186,9 @@ class DashboardController extends Controller
 
         $stickyNotes = StickyNotes::where('user_id', $user->id)->get();
 
-        $notificationCount = Notification::where('user_id', $user->id)->where('read_at', 0)->count();
+        $startOfWeek = now()->startOfWeek(); // Assuming you want the week to start on Monday
+        $endOfWeek = now()->endOfWeek();
+        $notificationCount = Notification::where('user_id', $user->id)->whereBetween('created_at', [$startOfWeek, $endOfWeek])->where('read_at', 0)->count();
 
         $cal1 = ProjectOverview::find(2);
         if ($user->id == 1) {

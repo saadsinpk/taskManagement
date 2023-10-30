@@ -54,7 +54,10 @@ class TaskManagementController extends Controller
         ]);
 
         $received = intval($input['assigned_to']);
-        $count = Notification::where('user_id', $received)->where('read_at', 0)->count();
+
+        $startOfWeek = now()->startOfWeek();
+        $endOfWeek = now()->endOfWeek();
+        $count = Notification::where('user_id', $received)->whereBetween('created_at', [$startOfWeek, $endOfWeek])->where('read_at', 0)->count();
         $userNotificationData = [
             'id' => $received,
             'count' => $count,
@@ -75,7 +78,7 @@ class TaskManagementController extends Controller
         if ($user->id == 1) {
             $task = TaskManagement::all();
         } else {
-            $task = TaskManagement::where('assigned_to', $user->id)->get();
+            $task = TaskManagement::where('assigned_to', $user->id)->orWhere('created_by', $user->id)->get();
         }
         foreach ($task as $tsk) {
             if ($tsk->status) {
@@ -118,7 +121,7 @@ class TaskManagementController extends Controller
         if ($user->id == 1) {
             $task = TaskManagement::where('id', $id)->first();
         } else {
-            $task = TaskManagement::where('id', $id)->where('assigned_to', $user->id)->first();
+            $task = TaskManagement::where('id', $id)->where('assigned_to', $user->id)->orWhere('created_by', $user->id)->first();
         }
         if (!$task) {
             return response()->json(['message' => 'task not found'], 404);
@@ -315,7 +318,7 @@ class TaskManagementController extends Controller
         if ($user->id == 1) {
             $task = TaskManagement::find($id);
         } else {
-            $task = TaskManagement::where('id', $id)->where('assigned_to', $user->id)->first();
+            $task = TaskManagement::where('id', $id)->where('assigned_to', $user->id)->orWhere('created_by', $user->id)->first();
         }
 
         if (!$task) {

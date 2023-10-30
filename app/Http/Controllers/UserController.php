@@ -8,6 +8,7 @@ use App\Models\Routes;
 use App\Models\RoleHasPermission;
 use App\Models\GeneralSetting;
 use App\Models\Notification;
+use App\Models\NotificationSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
@@ -78,7 +79,32 @@ class UserController extends Controller
         }
         $generalsetting = GeneralSetting::where('user_id', $id)->get();
 
-        $notificationCount = Notification::where('user_id', $user->id)->where('read_at', 0)->count();
+        $notificationCount = 0;
+        $notificationSettings = NotificationSetting::where('user_id', $user->id)->first();
+        if ($notificationSettings) {
+            if ($notificationSettings && $notificationSettings->webTask === "false" && $notificationSettings->webChat === "false") {
+                $notificationCount = 0;
+            } else { // Calculate the start and end of the current week
+                $startOfWeek = now()->startOfWeek(); // Assuming you want the week to start on Monday
+                $endOfWeek = now()->endOfWeek();
+
+                $noifiactionsCount = Notification::where('user_id', $user->id)
+                    ->where('read_at', 0)
+                    ->whereBetween('created_at', [$startOfWeek, $endOfWeek]);
+
+                if ($notificationSettings->webTask === "true" && $notificationSettings->webChat === "true") {
+                    $notificationCount = $noifiactionsCount->count();
+                } else {
+                    if ($notificationSettings->webTask === "true") {
+                        $noifiactionsCount->where('type', 'TaskAssigned');
+                    }
+                    if ($notificationSettings->webChat === "true") {
+                        $noifiactionsCount->where('type', 'Chat');
+                    }
+                    $notificationCount = $noifiactionsCount->count();
+                }
+            }
+        }
 
         return response()->json(['user' => $user, 'RolesAndPermissions' => $permissions, 'generalSetting' => $generalsetting, 'routes' => $routes, 'notification' => $notificationCount], 200);
     }

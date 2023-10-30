@@ -53,7 +53,7 @@ class ChatsController extends Controller
         })->orWhere(function ($query) use ($userData, $received_id) {
             $query->where('user_id', $received_id)
                 ->where('user_chat', $userData->id);
-        })->orderBy('created_at', 'desc')->limit(50)->get();
+        })->orderBy('created_at', 'desc')->limit(15)->get();
 
         $customData =  'messageUpdate';
 
@@ -67,7 +67,32 @@ class ChatsController extends Controller
         // Trigger the event
         event(new sendMessage($userData->id, $message, $customData, $userSenderList, $received));
 
-        $count = Notification::where('user_id', $received)->where('read_at', 0)->count();
+        $count = 0;
+        $notificationSettings = NotificationSetting::where('user_id', $userData->id)->first();
+        if ($notificationSettings) {
+            if ($notificationSettings && $notificationSettings->webTask === "false" && $notificationSettings->webChat === "false") {
+                $count = 0;
+            } else { // Calculate the start and end of the current week
+                $startOfWeek = now()->startOfWeek(); // Assuming you want the week to start on Monday
+                $endOfWeek = now()->endOfWeek();
+
+                $noifiactionsCount = Notification::where('user_id', $userData->id)
+                    ->where('read_at', 0)
+                    ->whereBetween('created_at', [$startOfWeek, $endOfWeek]);
+
+                if ($notificationSettings->webTask === "true" && $notificationSettings->webChat === "true") {
+                    $count = $noifiactionsCount->count();
+                } else {
+                    if ($notificationSettings->webTask === "true") {
+                        $noifiactionsCount->where('type', 'TaskAssigned');
+                    }
+                    if ($notificationSettings->webChat === "true") {
+                        $noifiactionsCount->where('type', 'Chat');
+                    }
+                    $count = $noifiactionsCount->count();
+                }
+            }
+        }
 
         $userNotificationData = [
             'id' => $received,
@@ -90,7 +115,7 @@ class ChatsController extends Controller
         })->orWhere(function ($query) use ($user, $received_id) {
             $query->where('user_id', $received_id)
                 ->where('user_chat', $user->id);
-        })->orderBy('created_at', 'desc')->limit(50)->get();
+        })->orderBy('created_at', 'desc')->limit(15)->get();
 
         if ($messages->count() > 0) {
             $messages->each(function ($message) {
@@ -98,7 +123,8 @@ class ChatsController extends Controller
             });
         }
         $count = $messages->count();
-        $msg = ['messages' => $messages, 'count' => $count];
+        $userRecentC = $this->messageConversationData($user->id);
+        $msg = ['messages' => $messages, 'count' => $count, 'recentChats' => $userRecentC];
 
         return $msg;
     }
@@ -116,7 +142,7 @@ class ChatsController extends Controller
         })->orderBy('created_at', 'desc')->count();
 
         if ($messagesCount != $request->total_chats) {
-            $setLimit = $request->total_chats + 20;
+            $setLimit = $request->total_chats + 10;
 
             $messages = Chats::where(function ($query) use ($user, $received_id) {
                 $query->where('user_id', $user->id)
@@ -229,6 +255,21 @@ class ChatsController extends Controller
         });
 
         return $recentChats;
+    }
+
+    public function messageSeen(Request $request)
+    {
+        $msgID = $request->msgID;
+        $userID = $request->userID;
+        $userData = Auth::user();
+        $messages = Chats::find($msgID);
+        if ($messages) {
+            $messages->update(['is_read' => 1]);
+            $userRecentC = $this->messageConversationData($userData->id);
+            return $userRecentC;
+        } else {
+            return response()->json(['error' => true]);
+        }
     }
 
     private function messageConversationData($id)

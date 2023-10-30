@@ -161,6 +161,7 @@ Route::middleware(['verify.api.token'])->group(function () {
     Route::get('/messageHistory/{received_id}', [ChatsController::class, 'messageHistory']);
     Route::post('/messageHistoryLoder', [ChatsController::class, 'messageHistoryLoder']);
     Route::get('/messageConversation', [ChatsController::class, 'messageConversation']);
+    Route::post('/messageSeen', [ChatsController::class, 'messageSeen']);
     Broadcast::routes(['prefix' => 'api', 'middleware' => ['auth:api']]);
 
     //StickyNotes

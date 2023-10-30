@@ -23,7 +23,7 @@ class CheckRole
             $path = $request->path();
             $pathWithoutId = preg_replace('/\/\d+$/', '', $path);
             $parts = explode('/', $pathWithoutId);
-            $endpoint = end($parts);
+            $endpoint = $parts[1];
             $roles = RoleHasPermission::where('role_id', $role)
                 ->where('title', $endpoint)
                 ->first();
