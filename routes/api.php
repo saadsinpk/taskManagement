@@ -9,6 +9,8 @@ use App\Http\Controllers\TaskManagementController;
 use App\Http\Controllers\KanbanController;
 use App\Http\Controllers\TaskClanderController;
 use App\Http\Controllers\TaskManagementStatusController;
+use App\Http\Controllers\TaskCommentController;
+use App\Http\Controllers\TaskActivityController;
 use App\Http\Controllers\OrderManagementController;
 use App\Http\Controllers\OrderManagementStatusController;
 use App\Http\Controllers\GeneralSettingController;
@@ -82,7 +84,6 @@ Route::middleware(['verify.api.token'])->group(function () {
         Route::post('/taskCreate', [TaskManagementController::class, 'taskCreate']);
         Route::get('/taskList', [TaskManagementController::class, 'taskList']);
         Route::get('/taskEdit/{id}', [TaskManagementController::class, 'taskEdit']);
-
         Route::get('/taskDelete/{id}', [TaskManagementController::class, 'taskDelete']);
     });
     Route::get('/taskView/{id}', [TaskManagementController::class, 'taskView']);
@@ -110,6 +111,15 @@ Route::middleware(['verify.api.token'])->group(function () {
     });
     Route::post('/statusUpdate', [TaskManagementStatusController::class, 'statusUpdate']);
 
+    //comment
+    Route::post('/commentSend', [TaskCommentController::class, 'commentSend']);
+    Route::get('/commentEdit/{id}', [TaskCommentController::class, 'commentEdit']);
+    Route::post('/commentUpdate', [TaskCommentController::class, 'commentUpdate']);
+    Route::get('/commentDelete/{id}/{tasl_id}', [TaskCommentController::class, 'commentDelete']);
+
+    //Activity
+    Route::post('/activityCheckIn', [TaskActivityController::class, 'activityCheckIn']);
+    Route::post('/activityCheckOut', [TaskActivityController::class, 'activityCheckOut']);
     //OrderManagement
     //Order
     Route::middleware(['check.role'])->group(function () {

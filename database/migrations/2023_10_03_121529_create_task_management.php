@@ -22,6 +22,7 @@ return new class extends Migration
             $table->date('deadline');
             $table->string('description');
             $table->string('created_by');
+            $table->string('collaboration')->nullable();
             $table->string('overview')->nullable();
             $table->timestamps();
         });

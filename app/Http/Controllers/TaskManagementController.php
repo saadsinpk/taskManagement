@@ -2,18 +2,24 @@
 
 namespace App\Http\Controllers;
 
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use App\Models\TaskManagement;
 use App\Models\User;
 use App\Models\TaskManagementStatus;
 use App\Models\OrderManagement;
+use App\Models\TaskComment;
+use App\Models\TaskActivity;
 use App\Models\History;
 use App\Models\Notification;
+use App\Models\NotificationSetting;
 use App\Models\Role;
 use App\Models\ProjectOverview;
 use App\Events\NewNotificationEvent;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator; // Import the Validator facade
+use App\Mail\sendMail;
+use Illuminate\Support\Facades\Mail;
 
 class TaskManagementController extends Controller
 {
@@ -30,7 +36,6 @@ class TaskManagementController extends Controller
         $user = Auth::user();
         $validator = Validator::make($request->all(), [
             'title' => 'required',
-            'assigned_to' => 'required',
             'priority' => 'required',
             'status' => 'required',
             'deadline' => 'required',
@@ -42,29 +47,48 @@ class TaskManagementController extends Controller
         }
         $input = $request->all();
         $input['created_by'] = $user->id;
+        $input['assigned_to'] = $user->id;
         $input['start_date'] = now();
         $taskmngstatus = TaskManagement::create($input);
-        Notification::create([
-            'user_id' => $input['assigned_to'],
-            'type' => 'TaskAssigned',
-            'notifiable_id' => $taskmngstatus->id,
-            'notifiable_type' => TaskManagement::class,
-            'data' =>  $input['order_id'],
-            'read_at' => '0',
-        ]);
 
-        $received = intval($input['assigned_to']);
+        $assignedToIDs = explode(',', $input['collaboration']);
 
-        $startOfWeek = now()->startOfWeek();
-        $endOfWeek = now()->endOfWeek();
-        $count = Notification::where('user_id', $received)->whereBetween('created_at', [$startOfWeek, $endOfWeek])->where('read_at', 0)->count();
-        $userNotificationData = [
-            'id' => $received,
-            'count' => $count,
-        ];
+        foreach ($assignedToIDs as $assignedToID) {
+            Notification::create([
+                'user_id' => $assignedToID,
+                'type' => 'TaskAssigned',
+                'notifiable_id' => $taskmngstatus->id,
+                'notifiable_type' => TaskManagement::class,
+                'data' =>  $input['order_id'],
+                'read_at' => '0',
+            ]);
+            $userWhoAssigned = Auth::user(); // User who assigns the task
+            $userAssignedTask = User::find($input['assigned_to']); // User to whom the task is assigned
+            $checkMail = NotificationSetting::where('user_id', $user->id)->where('emailTask', 'true')->first();
+            if ($checkMail) {
+                // Send the notification email
+                $res = Mail::to($userAssignedTask->email)->send(new sendMail($taskmngstatus));
+            }
+            $received = intval($assignedToID);
 
-        // Trigger the event
-        event(new NewNotificationEvent($userNotificationData));
+            $startOfWeek = now()->startOfWeek();
+            $endOfWeek = now()->endOfWeek();
+            $count = Notification::where('user_id', $received)->whereBetween('created_at', [$startOfWeek, $endOfWeek])->where('read_at', 0)->count();
+            $userNotificationData = [
+                'id' => $received,
+                'count' => $count,
+            ];
+            $user = Auth::user();
+            $check = NotificationSetting::where('user_id', $user->id)->where('webTask', 'true')->first();
+            if ($check) {
+                // Trigger the event
+                event(new NewNotificationEvent($userNotificationData));
+            }
+        }
+
+
+
+
         if ($taskmngstatus) {
             return response()->json(['message' => 'Task created successfully'], 201);
         } else {
@@ -78,7 +102,14 @@ class TaskManagementController extends Controller
         if ($user->id == 1) {
             $task = TaskManagement::all();
         } else {
-            $task = TaskManagement::where('assigned_to', $user->id)->orWhere('created_by', $user->id)->get();
+            $task = TaskManagement::where('created_by', $user->id)
+                ->orWhere(function ($query) use ($user) {
+                    $query->where('collaboration', 'LIKE', $user->id)
+                        ->orWhere('collaboration', 'LIKE', $user->id . ',%')
+                        ->orWhere('collaboration', 'LIKE', '%,' . $user->id . ',%')
+                        ->orWhere('collaboration', 'LIKE', '%,' . $user->id);
+                })
+                ->get();
         }
         foreach ($task as $tsk) {
             if ($tsk->status) {
@@ -111,6 +142,22 @@ class TaskManagementController extends Controller
                     $tsk['overview_name'] = [];
                 }
             }
+            // if ($tsk->collaboration) {
+            //     $userDetails = [];
+            //     $collaborationIds = explode(',', $tsk->collaboration);
+            //     $users = User::whereIn('id', $collaborationIds)->get();
+            //     if ($users) {
+            //         foreach ($users as $user) {
+            //             $userDetails[] = [
+            //                 'id' => $user->id,
+            //                 'name' => $user->fname . ' ' . $user->lname,
+            //                 'email' => $user->email,
+            //                 'profile' => $user->profile,
+            //             ];
+            //         }
+            //     }
+            //     $task['userDetails'] = $userDetails;
+            // }
         }
         return response()->json(['task' => $task], 200);
     }
@@ -121,7 +168,12 @@ class TaskManagementController extends Controller
         if ($user->id == 1) {
             $task = TaskManagement::where('id', $id)->first();
         } else {
-            $task = TaskManagement::where('id', $id)->where('assigned_to', $user->id)->orWhere('created_by', $user->id)->first();
+            $task = TaskManagement::where('id', $id)
+                ->where(function ($query) use ($user) {
+                    $query->where('created_by', $user->id)
+                        ->orWhere('collaboration', 'LIKE', '%' . $user->id . '%');
+                })
+                ->first();
         }
         if (!$task) {
             return response()->json(['message' => 'task not found'], 404);
@@ -145,7 +197,28 @@ class TaskManagementController extends Controller
                 $task['orderData'] = [];
             }
         }
-
+        if ($task->collaboration) {
+            $userDetails = [];
+            $collaborationIds = explode(',', $task->collaboration);
+            $users = User::whereIn('id', $collaborationIds)->get();
+            if ($users) {
+                foreach ($users as $user) {
+                    $userDetails[] = [
+                        'id' => $user->id,
+                        'name' => $user->fname . ' ' . $user->lname,
+                        'email' => $user->email,
+                        'profile' => $user->profile,
+                    ];
+                }
+            }
+            $task['userDetails'] = $userDetails;
+        }
+        if ($task->collaboration) {
+            $userDetails = [];
+            $collaborationIDs = explode(',', $task->collaboration);
+            $collaborationIDs = array_map('intval', $collaborationIDs);
+            $task['arrayIDS'] = $collaborationIDs;
+        }
         $user = User::all();
         $status = TaskManagementStatus::all();
         $order = OrderManagement::all();
@@ -157,15 +230,16 @@ class TaskManagementController extends Controller
     {
         $history = [];
         $user = Auth::user();
-
+        $history = History::where('task_id', $id)->orderBy('created_at', 'desc')->get();
         if ($user->id == 1) {
             $task = TaskManagement::where('id', $id)->first();
-            $history = History::where('task_id', $id)->orderBy('created_at', 'desc')->get();
         } else {
-            $task = TaskManagement::where('id', $id)->where('assigned_to', $user->id)->first();
-            $history = History::where('task_id', $id)->where('user_id', $user->id)
-                ->orderBy('created_at', 'desc')
-                ->get();
+            $task = TaskManagement::where('id', $id)
+                ->where(function ($query) use ($user) {
+                    $query->where('created_by', $user->id)
+                        ->orWhere('collaboration', 'LIKE', '%' . $user->id . '%');
+                })
+                ->first();
         }
         if (!$task) {
             return response()->json(['message' => 'task not found'], 404);
@@ -191,6 +265,28 @@ class TaskManagementController extends Controller
             } else {
                 $task['orderData'] = [];
             }
+        }
+        if ($task->collaboration) {
+            $userDetails = [];
+            $collaborationIds = explode(',', $task->collaboration);
+            $users = User::whereIn('id', $collaborationIds)->get();
+            if ($users) {
+                foreach ($users as $user) {
+                    $userDetails[] = [
+                        'id' => $user->id,
+                        'name' => $user->fname . ' ' . $user->lname,
+                        'email' => $user->email,
+                        'profile' => $user->profile,
+                    ];
+                }
+            }
+            $task['userDetails'] = $userDetails;
+        }
+        if ($task->collaboration) {
+            $userDetails = [];
+            $collaborationIDs = explode(',', $task->collaboration);
+            $collaborationIDs = array_map('intval', $collaborationIDs);
+            $task['arrayIDS'] = $collaborationIDs;
         }
 
         foreach ($history as $hstData) {
@@ -254,7 +350,60 @@ class TaskManagementController extends Controller
             }
         }
 
-        return response()->json(['task' => $task, 'history' => $history], 200);
+        $taskComnt = TaskComment::where('task_id', $id)->get();
+
+        foreach ($taskComnt as $key => $cmnt) {
+            if ($cmnt->user_id) {
+                $user = User::where('id', $cmnt->user_id)->first();
+                if ($user) {
+                    $taskComnt[$key]['userInfo'] = [
+                        'id' => $user->id,
+                        'name' => $user->fname . ' ' . $user->lname,
+                        'profile' => $user->profile
+                    ];
+                } else {
+                    $taskComnt[$key]['userInfo'] = [];
+                }
+            }
+        }
+
+        $taskActivity = TaskActivity::where('task_id', $id)->orderBy('id', 'Desc')->get();
+        foreach ($taskActivity as $key => $value) {
+            if ($value->user_id) {
+                $user = User::where('id', $value->user_id)->first();
+                if ($user) {
+                    $taskActivity[$key]['userInfo'] = [
+                        'id' => $user->id,
+                        'name' => $user->fname . ' ' . $user->lname,
+                        'profile' => $user->profile
+                    ];
+                } else {
+                    $taskActivity[$key]['userInfo'] = [];
+                }
+            }
+        }
+        $user = Auth::user();
+        $taskCheckActivity = TaskActivity::where('task_id', $id)
+            ->where('user_id', $user->id)
+            ->orderBy('id', 'desc')
+            ->first();
+        if ($taskCheckActivity) {
+            if ($taskCheckActivity->checkOut === null) {
+                $taskChkActivities = [
+                    'check' => false,
+                    'id' => $taskCheckActivity->id,
+                ];
+            } else {
+                $taskChkActivities = [
+                    'check' => true,
+                ];
+            }
+        } else {
+            $taskChkActivities = [
+                'check' => true,
+            ];
+        }
+        return response()->json(['task' => $task, 'history' => $history, 'taskComment' => $taskComnt, 'taskActivity' => $taskActivity, 'taskCheckActivity' => $taskChkActivities], 200);
     }
 
     public function taskUpdate(Request $request)
@@ -287,24 +436,40 @@ class TaskManagementController extends Controller
                         'colume_name' => $key,
                     ]);
                 }
-                if ($key == 'assigned_to') {
-                    Notification::create([
-                        'user_id' => $value,
-                        'type' => 'TaskAssigned',
-                        'notifiable_id' => $task->id,
-                        'notifiable_type' => TaskManagement::class,
-                        'data' =>  $task->order_id,
-                        'read_at' => '0',
-                    ]);
-                    $received = intval($value);
-                    $count = Notification::where('user_id', $received)->where('read_at', 0)->count();
-                    $userNotificationData = [
-                        'id' => $received,
-                        'count' => $count,
-                    ];
+                if ($key == 'collaboration') {
+                    $oldCollaboration = explode(',', $oldData[$key]);
+                    $newCollaboration = explode(',', $value);
 
-                    // Trigger the event
-                    event(new NewNotificationEvent($userNotificationData));
+                    $addedCollaborators = array_diff($newCollaboration, $oldCollaboration);
+
+                    foreach ($addedCollaborators as $addedCollaborator) {
+                        Notification::create([
+                            'user_id' => $addedCollaborator,
+                            'type' => 'TaskAssigned',
+                            'notifiable_id' => $task->id,
+                            'notifiable_type' => TaskManagement::class,
+                            'data' => $task->order_id,
+                            'read_at' => '0',
+                        ]);
+                        $count = Notification::where('user_id', $addedCollaborator)->where('read_at', 0)->count();
+
+                        $userNotificationData = [
+                            'id' => intval($addedCollaborator),
+                            'count' => $count,
+                        ];
+                        $userAssignedTask = User::find($addedCollaborator);
+                        $checkMail = NotificationSetting::where('user_id', $addedCollaborator)->where('emailTask', 'true')->first();
+                        if ($checkMail) {
+                            // Send the notification email
+                            $res = Mail::to($userAssignedTask->email)->send(new sendMail($task));
+                        }
+                        $check = NotificationSetting::where('user_id', $addedCollaborator)->where('webTask', 'true')->first();
+                        // return $check;
+                        if ($check) {
+                            // Trigger the event
+                            event(new NewNotificationEvent($userNotificationData));
+                        }
+                    }
                 }
             }
         }
@@ -318,7 +483,7 @@ class TaskManagementController extends Controller
         if ($user->id == 1) {
             $task = TaskManagement::find($id);
         } else {
-            $task = TaskManagement::where('id', $id)->where('assigned_to', $user->id)->orWhere('created_by', $user->id)->first();
+            $task = TaskManagement::where('id', $id)->Where('created_by', $user->id)->orWhere('collaboration', 'LIKE', '%' . $user->id . '%')->first();
         }
 
         if (!$task) {

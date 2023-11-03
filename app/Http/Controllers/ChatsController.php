@@ -15,6 +15,8 @@ use App\Notifications\MyNotification;
 use App\Events\NewNotificationEvent;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
+use App\Mail\sendMail;
+use Illuminate\Support\Facades\Mail;
 
 class ChatsController extends Controller
 {
@@ -99,8 +101,18 @@ class ChatsController extends Controller
             'count' => $count,
         ];
 
-        // Trigger the event
-        event(new NewNotificationEvent($userNotificationData));
+        $user = Auth::user();
+        $userAssignedTask = User::find($received_id);
+        $checkMail = NotificationSetting::where('user_id', $user->id)->where('emailChat', 'true')->first();
+        if ($checkMail) {
+            // Send the notification email
+            $res = Mail::to($userAssignedTask->email)->send(new sendMail($messageSender));
+        }
+        $checksssss = NotificationSetting::where('user_id', $user->id)->where('webChat', 'true')->first();
+        if ($checksssss) {
+            // Trigger the event
+            event(new NewNotificationEvent($userNotificationData));
+        }
 
         return $message;
     }
@@ -175,7 +187,14 @@ class ChatsController extends Controller
         if ($userId != 1) {
             $superAdminId = 1;
 
-            $taskOrderIds = TaskManagement::where('assigned_to', $userId)
+            $taskOrderIds = TaskManagement::where('created_by', $userId)
+                ->orWhere(function ($query) use ($userId) {
+                    $query->where('collaboration', 'LIKE', $userId)
+                        ->orWhere('collaboration', 'LIKE', $userId . ',%')
+                        ->orWhere('collaboration', 'LIKE', '%,' . $userId . ',%')
+                        ->orWhere('collaboration', 'LIKE', '%,' . $userId);
+                })
+                ->get()
                 ->pluck('order_id');
 
             $orderIdsCreatedByUser = OrderManagement::where('created_by', $userId)
@@ -184,7 +203,12 @@ class ChatsController extends Controller
             $orderIds = $taskOrderIds->merge($orderIdsCreatedByUser)->unique();
 
             $userInfo = TaskManagement::whereIn('order_id', $orderIds)
-                ->pluck('assigned_to')
+                ->where('collaboration', 'LIKE', '%' . $userId . '%')
+                ->pluck('collaboration')
+                ->map(function ($assignedTo) {
+                    return explode(',', $assignedTo); // Split the string by comma to get an array of user IDs
+                })
+                ->flatten()
                 ->unique()
                 ->reject(function ($userId) use ($userLogin) {
                     return $userId == $userLogin->id;
@@ -196,8 +220,7 @@ class ChatsController extends Controller
                 }
             }
 
-            $users = User::whereIn('id', $userInfo)
-                ->get();
+            $users = User::whereIn('id', $userInfo)->get();
         } else {
             $users = User::where('id', '!=', $userLogin->id)->get();
         }

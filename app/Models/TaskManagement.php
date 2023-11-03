@@ -21,5 +21,6 @@ class TaskManagement extends Model
         'created_by',
         'start_date',
         'overview',
+        'collaboration',
     ];
 }
