@@ -174,6 +174,37 @@ class DashboardController extends Controller
                             $hstData['new_data'] = [];
                         }
                     }
+                    if ($hstData->colume_name == 'collaboration') {
+                        $collaborationIds = explode(',', $hstData->collaboration);
+
+                        // Retrieve old_data for each user in collaborationIds
+                        $oldData = [];
+                        $oldUsers = User::whereIn('id', $collaborationIds)->get();
+                        foreach ($oldUsers as $user) {
+                            $oldData[] = [
+                                'id' => $user->id,
+                                'name' => $user->fname . ' ' . $user->lname,
+                                'email' => $user->email,
+                                'profile' => $user->profile,
+                            ];
+                        }
+
+                        // Retrieve new_data for each user in collaborationIds
+                        $newData = [];
+                        $newUsers = User::whereIn('id', $collaborationIds)->get();
+                        foreach ($newUsers as $user) {
+                            $newData[] = [
+                                'id' => $user->id,
+                                'name' => $user->fname . ' ' . $user->lname,
+                                'email' => $user->email,
+                                'profile' => $user->profile,
+                            ];
+                        }
+
+                        // Assign the retrieved data to corresponding properties
+                        $hstData['old_data'] = $oldData;
+                        $hstData['new_data'] = $newData;
+                    }
                 } else {
                     $hstData['taskData'] = [];
                 }

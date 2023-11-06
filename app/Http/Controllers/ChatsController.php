@@ -69,8 +69,7 @@ class ChatsController extends Controller
         // Trigger the event
         event(new sendMessage($userData->id, $message, $customData, $userSenderList, $received));
 
-        $count = 0;
-        $notificationSettings = NotificationSetting::where('user_id', $userData->id)->first();
+        $notificationSettings = NotificationSetting::where('user_id', $received_id)->first();
         if ($notificationSettings) {
             if ($notificationSettings && $notificationSettings->webTask === "false" && $notificationSettings->webChat === "false") {
                 $count = 0;
@@ -78,7 +77,7 @@ class ChatsController extends Controller
                 $startOfWeek = now()->startOfWeek(); // Assuming you want the week to start on Monday
                 $endOfWeek = now()->endOfWeek();
 
-                $noifiactionsCount = Notification::where('user_id', $userData->id)
+                $noifiactionsCount = Notification::where('user_id', $received_id)
                     ->where('read_at', 0)
                     ->whereBetween('created_at', [$startOfWeek, $endOfWeek]);
 
@@ -94,21 +93,22 @@ class ChatsController extends Controller
                     $count = $noifiactionsCount->count();
                 }
             }
+            $userNotificationData = [
+                'id' => $received,
+                'count' => $count,
+            ];
         }
 
-        $userNotificationData = [
-            'id' => $received,
-            'count' => $count,
-        ];
+
 
         $user = Auth::user();
         $userAssignedTask = User::find($received_id);
-        $checkMail = NotificationSetting::where('user_id', $user->id)->where('emailChat', 'true')->first();
+        $checkMail = NotificationSetting::where('user_id', $received_id)->where('emailChat', 'true')->first();
         if ($checkMail) {
             // Send the notification email
             $res = Mail::to($userAssignedTask->email)->send(new sendMail($messageSender));
         }
-        $checksssss = NotificationSetting::where('user_id', $user->id)->where('webChat', 'true')->first();
+        $checksssss = NotificationSetting::where('user_id', $received_id)->where('webChat', 'true')->first();
         if ($checksssss) {
             // Trigger the event
             event(new NewNotificationEvent($userNotificationData));
