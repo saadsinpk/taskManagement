@@ -39,26 +39,26 @@ class TaskActivityController extends Controller
 
             $taskActivity = TaskActivity::where('task_id', $request->task_id)->orderBy('id', 'Desc')->get();
            
-            foreach ($taskActivity as $activity) {
-                $totalDurationInMinutes = 0;
-                $checkInTime = strtotime($activity->checkIn);
-                if(!empty($activity->checkOut)){
-                    $checkOutTime = strtotime($activity->checkOut);
-                }else{
-                    $checkOutTime = $checkInTime;
+            foreach ($taskActivity as $taskActivities) {
+                $checkInTime = Carbon::parse($taskActivities->checkIn);
+                $taskActivities->checkIn  = $checkInTime->format('Y-m-d h:i A');
+    
+                $totalTime = 0;
+                if ($taskActivities->checkOut) {
+                    $checkInTime = Carbon::parse($taskActivities->checkIn);
+                    $checkOutTime = Carbon::parse($taskActivities->checkOut);
+                    $totalTime += $checkOutTime->diffInMinutes($checkInTime);
+    
+                    $checkInTime = Carbon::parse($taskActivities->checkOut);
+                    $taskActivities->checkOut  = $checkInTime->format('Y-m-d h:i A');
+    
                 }
-             
-            
-                $timeDifference = $checkOutTime - $checkInTime;
-                $durationInMinutes = $timeDifference / 60;
-            
-                $totalDurationInMinutes += $durationInMinutes;
-                $totalHours = floor($totalDurationInMinutes / 60);
-                $totalMinutes = $totalDurationInMinutes % 60;
-                 
-                $activity->total_time = $totalHours .' : '. $totalMinutes;
-                
+    
+                $totalHours = floor($totalTime / 60);
+                $totalMinutes = $totalTime % 60;
+                $taskActivities->total_hours = $totalHours . ' hr : ' . $totalMinutes . ' min';
             }
+            
             foreach ($taskActivity as $key => $cmnt) {
                 if ($cmnt->user_id) {
                     $user = User::where('id', $cmnt->user_id)->first();
@@ -95,20 +95,26 @@ class TaskActivityController extends Controller
         if ($activity->update($request->all())) {
             $taskActivity = TaskActivity::where('task_id', $request->task_id)->orderBy('id', 'Desc')->get();
            
-            foreach ($taskActivity as $activity) {
-                $totalDurationInMinutes = 0;
-                $checkInTime = strtotime($activity->checkIn);
-                $checkOutTime = strtotime($activity->checkOut);
-            
-                $timeDifference = $checkOutTime - $checkInTime;
-                $durationInMinutes = $timeDifference / 60;
-            
-                $totalDurationInMinutes += $durationInMinutes;
-                $totalHours = floor($totalDurationInMinutes / 60);
-                $totalMinutes = $totalDurationInMinutes % 60;
-                 
-                $activity->total_time = $totalHours .' : '. $totalMinutes;
+            foreach ($taskActivity as $taskActivities) {
+                $checkInTime = Carbon::parse($taskActivities->checkIn);
+                $taskActivities->checkIn  = $checkInTime->format('Y-m-d h:i A');
+    
+                $totalTime = 0;
+                if ($taskActivities->checkOut) {
+                    $checkInTime = Carbon::parse($taskActivities->checkIn);
+                    $checkOutTime = Carbon::parse($taskActivities->checkOut);
+                    $totalTime += $checkOutTime->diffInMinutes($checkInTime);
+    
+                    $checkInTime = Carbon::parse($taskActivities->checkOut);
+                    $taskActivities->checkOut  = $checkInTime->format('Y-m-d h:i A');
+    
+                }
+    
+                $totalHours = floor($totalTime / 60);
+                $totalMinutes = $totalTime % 60;
+                $taskActivities->total_hours = $totalHours . ' hr : ' . $totalMinutes . ' min';
             }
+            
             foreach ($taskActivity as $key => $cmnt) {
                 if ($cmnt->user_id) {
                     $user = User::where('id', $cmnt->user_id)->first();

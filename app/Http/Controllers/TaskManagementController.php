@@ -402,21 +402,30 @@ class TaskManagementController extends Controller
 
         $taskActivity = TaskActivity::where('task_id', $id)->orderBy('id', 'Desc')->get();
        
-        foreach ($taskActivity as $activity) {
-            $totalDurationInMinutes = 0;
-            $checkInTime = strtotime($activity->checkIn);
-            $checkOutTime = strtotime($activity->checkOut);
-        
-            $timeDifference = $checkOutTime - $checkInTime;
-            $durationInMinutes = $timeDifference / 60;
-        
-            $totalDurationInMinutes += $durationInMinutes;
-            $totalHours = floor($totalDurationInMinutes / 60);
-            $totalMinutes = $totalDurationInMinutes % 60;
-             
-            $activity->total_time = $totalHours .' : '. $totalMinutes;
+       
+
+       
+
+        foreach ($taskActivity as $taskActivities) {
+            $checkInTime = Carbon::parse($taskActivities->checkIn);
+            $taskActivities->checkIn  = $checkInTime->format('Y-m-d h:i A');
+
+            $totalTime = 0;
+            if ($taskActivities->checkOut) {
+                $checkInTime = Carbon::parse($taskActivities->checkIn);
+                $checkOutTime = Carbon::parse($taskActivities->checkOut);
+                $totalTime += $checkOutTime->diffInMinutes($checkInTime);
+
+                $checkInTime = Carbon::parse($taskActivities->checkOut);
+                $taskActivities->checkOut  = $checkInTime->format('Y-m-d h:i A');
+
+            }
+
+            $totalHours = floor($totalTime / 60);
+            $totalMinutes = $totalTime % 60;
+            $taskActivities->total_hours = $totalHours . ' hr : ' . $totalMinutes . ' min';
         }
-    
+
 
 
         foreach ($taskActivity as $key => $value) {
