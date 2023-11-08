@@ -22,6 +22,7 @@ class TaskActivityController extends Controller
         $input = $request->all();
         $input['user_id'] = $user->id;
         $taskNewActivity = TaskActivity::create($input);
+        
 
         if ($taskNewActivity) {
             $user = User::find($user->id);
@@ -37,6 +38,27 @@ class TaskActivityController extends Controller
             }
 
             $taskActivity = TaskActivity::where('task_id', $request->task_id)->orderBy('id', 'Desc')->get();
+           
+            foreach ($taskActivity as $activity) {
+                $totalDurationInMinutes = 0;
+                $checkInTime = strtotime($activity->checkIn);
+                if(!empty($activity->checkOut)){
+                    $checkOutTime = strtotime($activity->checkOut);
+                }else{
+                    $checkOutTime = $checkInTime;
+                }
+             
+            
+                $timeDifference = $checkOutTime - $checkInTime;
+                $durationInMinutes = $timeDifference / 60;
+            
+                $totalDurationInMinutes += $durationInMinutes;
+                $totalHours = floor($totalDurationInMinutes / 60);
+                $totalMinutes = $totalDurationInMinutes % 60;
+                 
+                $activity->total_time = $totalHours .' : '. $totalMinutes;
+                
+            }
             foreach ($taskActivity as $key => $cmnt) {
                 if ($cmnt->user_id) {
                     $user = User::where('id', $cmnt->user_id)->first();
@@ -72,6 +94,21 @@ class TaskActivityController extends Controller
 
         if ($activity->update($request->all())) {
             $taskActivity = TaskActivity::where('task_id', $request->task_id)->orderBy('id', 'Desc')->get();
+           
+            foreach ($taskActivity as $activity) {
+                $totalDurationInMinutes = 0;
+                $checkInTime = strtotime($activity->checkIn);
+                $checkOutTime = strtotime($activity->checkOut);
+            
+                $timeDifference = $checkOutTime - $checkInTime;
+                $durationInMinutes = $timeDifference / 60;
+            
+                $totalDurationInMinutes += $durationInMinutes;
+                $totalHours = floor($totalDurationInMinutes / 60);
+                $totalMinutes = $totalDurationInMinutes % 60;
+                 
+                $activity->total_time = $totalHours .' : '. $totalMinutes;
+            }
             foreach ($taskActivity as $key => $cmnt) {
                 if ($cmnt->user_id) {
                     $user = User::where('id', $cmnt->user_id)->first();

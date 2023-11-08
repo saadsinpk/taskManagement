@@ -401,8 +401,9 @@ class TaskManagementController extends Controller
         }
 
         $taskActivity = TaskActivity::where('task_id', $id)->orderBy('id', 'Desc')->get();
-        $totalDurationInMinutes = 0;
+       
         foreach ($taskActivity as $activity) {
+            $totalDurationInMinutes = 0;
             $checkInTime = strtotime($activity->checkIn);
             $checkOutTime = strtotime($activity->checkOut);
         
@@ -413,7 +414,7 @@ class TaskManagementController extends Controller
             $totalHours = floor($totalDurationInMinutes / 60);
             $totalMinutes = $totalDurationInMinutes % 60;
              
-            $activity->total_time = $totalHours .': '. $totalMinutes;
+            $activity->total_time = $totalHours .' : '. $totalMinutes;
         }
     
 
