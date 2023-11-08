@@ -234,12 +234,14 @@ class TaskManagementController extends Controller
         if ($user->id == 1) {
             $task = TaskManagement::where('id', $id)->first();
         } else {
-            $task = TaskManagement::where('id', $id)
-                ->where(function ($query) use ($user) {
-                    $query->where('created_by', $user->id)
-                        ->orWhere('collaboration', 'LIKE', '%' . $user->id . '%');
-                })
-                ->first();
+           
+            // $task = TaskManagement::where('id', $id)
+            //     ->where(function ($query) use ($user) {
+            //         $query->where('created_by', $user->id)
+            //             ->orWhere('collaboration', 'LIKE', '%' . $user->id . '%');
+            //     })
+            //     ->first();
+            $task = TaskManagement::where('id', $id)->first();
         }
         if (!$task) {
             return response()->json(['message' => 'task not found'], 404);
@@ -399,6 +401,23 @@ class TaskManagementController extends Controller
         }
 
         $taskActivity = TaskActivity::where('task_id', $id)->orderBy('id', 'Desc')->get();
+        $totalDurationInMinutes = 0;
+        foreach ($taskActivity as $activity) {
+            $checkInTime = strtotime($activity->checkIn);
+            $checkOutTime = strtotime($activity->checkOut);
+        
+            $timeDifference = $checkOutTime - $checkInTime;
+            $durationInMinutes = $timeDifference / 60;
+        
+            $totalDurationInMinutes += $durationInMinutes;
+            $totalHours = floor($totalDurationInMinutes / 60);
+            $totalMinutes = $totalDurationInMinutes % 60;
+             
+            $activity->total_time = $totalHours .': '. $totalMinutes;
+        }
+    
+
+
         foreach ($taskActivity as $key => $value) {
             if ($value->user_id) {
                 $user = User::where('id', $value->user_id)->first();

@@ -38,6 +38,7 @@ class ChatsController extends Controller
             'is_read' => false,
             // 'senderName' = $message->user_id == Auth::user()->id ? 'me' : 'other',
         ]);
+        
         Notification::create([
             'user_id' => $request->user_chat,
             'type' => 'Chat',
