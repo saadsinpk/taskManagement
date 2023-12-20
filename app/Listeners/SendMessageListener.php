@@ -22,7 +22,7 @@ class SendMessageListener
      */
     public function handle(SendMessage $event): void
     {
-        $user = $event->userData;
+        $user = $event->user;
         $message = $event->message;
         $customData = $event->customData;
 

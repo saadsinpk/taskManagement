@@ -38,7 +38,6 @@ class ChatsController extends Controller
             'is_read' => false,
             // 'senderName' = $message->user_id == Auth::user()->id ? 'me' : 'other',
         ]);
-        
         Notification::create([
             'user_id' => $request->user_chat,
             'type' => 'Chat',
@@ -136,7 +135,7 @@ class ChatsController extends Controller
             });
         }
         $count = $messages->count();
-        $userRecentC = $this->messageConversationData($user->id);
+        $userRecentC = $this->messageConversation($user->id);
         $msg = ['messages' => $messages, 'count' => $count, 'recentChats' => $userRecentC];
 
         return $msg;

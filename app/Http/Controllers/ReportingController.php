@@ -30,11 +30,11 @@ class ReportingController extends Controller
                         ->where('status', $status->id)
                         ->count();
                 } else {
-                    $tasksInMonth = TaskManagement::whereYear('start_date', $currentYear)
-                        ->whereMonth('start_date', $month)
-                        ->where('assigned_to', $user->id)
-                        ->where('status', $status->id)
-                        ->count();
+                    $tasksInMonth = TaskManagement::whereYear('start_date', $currentYear)->whereMonth('start_date', $month)->where(function ($query) use ($user) {
+                        $query->where('assigned_to', $user->id)
+                              ->orWhere('created_by', $user->id)
+                              ->orWhereRaw("FIND_IN_SET(?, collaboration)", [$user->id]);
+                    })->where('status', $status->id)->count();
                 }
                 // $monthlyCounts[] = [
                 //     $status->status_name => $tasksInMonth,
@@ -72,18 +72,23 @@ class ReportingController extends Controller
             foreach ($statuses as $status) {
                 if ($user->id == 1) {
                     $tasksInDay = TaskManagement::whereYear('start_date', $currentYear)
-                        ->whereMonth('start_date', $currentMonth)
-                        ->whereDay('start_date', $day)
-                        ->where('status', $status->id)
-                        ->count();
+                                                ->whereMonth('start_date', $currentMonth)
+                                                ->whereDay('start_date', $day)
+                                                ->where('status', $status->id)
+                                                ->count();
                 } else {
                     $tasksInDay = TaskManagement::whereYear('start_date', $currentYear)
-                        ->whereMonth('start_date', $currentMonth)
-                        ->whereDay('start_date', $day)
-                        ->where('assigned_to', $user->id)
-                        ->where('status', $status->id)
-                        ->count();
+                                                ->whereMonth('start_date', $currentMonth)
+                                                ->whereDay('start_date', $day)
+                                                ->where(function ($query) use ($user) {
+                                                    $query->where('assigned_to', $user->id)
+                                                          ->orWhere('created_by', $user->id)
+                                                          ->orWhereRaw("FIND_IN_SET(?, collaboration)", [$user->id]);
+                                                })
+                                                ->where('status', $status->id)
+                                                ->count();
                 }
+
 
                 $dailyCounts[] = [
                     'status_name' => $status->status_name,
@@ -123,12 +128,7 @@ class ReportingController extends Controller
                         ->where('status', $status->id)
                         ->count();
                 } else {
-                    $tasksInDay = TaskManagement::whereYear('start_date', $date->year)
-                        ->whereMonth('start_date', $date->month)
-                        ->whereDay('start_date', $date->day)
-                        ->where('assigned_to', $user->id)
-                        ->where('status', $status->id)
-                        ->count();
+                    $tasksInDay = TaskManagement::whereYear('start_date', $currentYear)->whereMonth('start_date', $month)->whereDay('start_date', $day)->where(function ($query) use ($user) {$query->where('assigned_to', $user->id)->orWhere('created_by', $user->id)->orWhereRaw("FIND_IN_SET(?, collaboration)", [$user->id]);})->where('status', $status->id)->count();
                 }
 
                 $weeklyCounts[] = [
@@ -198,9 +198,7 @@ class ReportingController extends Controller
         if ($user->id == 1) {
             $tasksInDateRange = TaskManagement::whereBetween('start_date', [$start, $end])->get();
         } else {
-            $tasksInDateRange = TaskManagement::whereBetween('start_date', [$start, $end])
-                ->where('assigned_to', $user->id)
-                ->get();
+            $tasksInDateRange = TaskManagement::whereBetween('start_date', [$start, $end])->where(function ($query) use ($user) {$query->where('assigned_to', $user->id)->orWhere('created_by', $user->id)->orWhereRaw("FIND_IN_SET(?, collaboration)", [$user->id]);})->get();
         }
 
         foreach ($tasksInDateRange as $task) {

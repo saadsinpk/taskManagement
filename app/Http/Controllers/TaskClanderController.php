@@ -20,7 +20,7 @@ class TaskClanderController extends Controller
         if ($user->id == 1) {
             $tasks = TaskManagement::all();
         } else {
-            $tasks = TaskManagement::where('assigned_to', $user->id)->get();
+            $tasks = TaskManagement::where(function ($query) use ($user) {$query->where('assigned_to', $user->id)->orWhere('created_by', $user->id)->orWhereRaw("FIND_IN_SET(?, collaboration)", [$user->id]);})->get();
         }
 
         $events = [];
@@ -72,7 +72,7 @@ class TaskClanderController extends Controller
         if ($user->id == 1) {
             $task = TaskManagement::where('id', $id)->first();
         } else {
-            $task = TaskManagement::where('id', $id)->where('assigned_to', $user->id)->first();
+            $task = TaskManagement::where(function ($query) use ($user) {$query->where('assigned_to', $user->id)->orWhere('created_by', $user->id)->orWhereRaw("FIND_IN_SET(?, collaboration)", [$user->id]);})->first();
         }
         if (!$task) {
             return response()->json(['message' => 'task not found'], 404);
@@ -107,7 +107,7 @@ class TaskClanderController extends Controller
         if ($user->id == 1) {
             $tasks = TaskManagement::all();
         } else {
-            $tasks = TaskManagement::where('assigned_to', $user->id)->get();
+            $tasks = TaskManagement::where(function ($query) use ($user) {$query->where('assigned_to', $user->id)->orWhere('created_by', $user->id)->orWhereRaw("FIND_IN_SET(?, collaboration)", [$user->id]);})->get();
         }
 
         $events = [];
@@ -158,7 +158,7 @@ class TaskClanderController extends Controller
         if ($user->id == 1) {
             $tasks = TaskManagement::all();
         } else {
-            $tasks = TaskManagement::where('assigned_to', $user->id)->get();
+            $tasks = TaskManagement::where(function ($query) use ($user) {$query->where('assigned_to', $user->id)->orWhere('created_by', $user->id)->orWhereRaw("FIND_IN_SET(?, collaboration)", [$user->id]);})->get();
         }
 
         $events = [];
@@ -222,7 +222,7 @@ class TaskClanderController extends Controller
         if ($user->id == 1) {
             $tasks = TaskManagement::all();
         } else {
-            $tasks = TaskManagement::where('assigned_to', $user->id)->get();
+            $tasks = TaskManagement::where(function ($query) use ($user) {$query->where('assigned_to', $user->id)->orWhere('created_by', $user->id)->orWhereRaw("FIND_IN_SET(?, collaboration)", [$user->id]);})->get();
         }
 
         $events = [];

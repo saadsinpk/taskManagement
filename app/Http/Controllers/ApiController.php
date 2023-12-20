@@ -44,7 +44,11 @@ class ApiController extends Controller
             // echo $request->details;
             $data = $request->details;
             $detai = json_decode($data, true);
-
+            print_r($detai);
+            
+            if(!is_array($detai)) {
+                return response()->json(['message' => 'Sorry! Something went wrong.']);
+            }
             foreach ($detai as $key => $value) {
                 $requestBody[$key] = $value;
             }

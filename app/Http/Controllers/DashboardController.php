@@ -37,7 +37,12 @@ class DashboardController extends Controller
                 ->where('deadline', '<=', $now->endOfMonth())
                 ->count();
         } else {
-            $task = TaskManagement::where('assigned_to', $user->id)->get();
+            $task = TaskManagement::where(function ($query) use ($user) {
+                $query->where('assigned_to', $user->id)
+                      ->orWhere('created_by', $user->id)
+                      ->orWhereRaw("FIND_IN_SET(?, collaboration)", [$user->id]);
+            })->get();
+
 
             $thisWeekTaskCreate = TaskManagement::whereBetween('start_date', [$currentWeekStart, $currentWeekEnd])->where('assigned_to', $user->id)->count();
 
@@ -99,7 +104,7 @@ class DashboardController extends Controller
             if ($user->id == 1) {
                 $tasks = TaskManagement::where('status', $status->id)->count();
             } else {
-                $tasks = TaskManagement::where('assigned_to', $user->id)->where('status', $status->id)->count();
+                $tasks = TaskManagement::where(function ($query) use ($user) {$query->where('assigned_to', $user->id)->orWhere('created_by', $user->id)->orWhereRaw("FIND_IN_SET(?, collaboration)", [$user->id]);})->where('status', $status->id)->count();
             }
 
             $AllTasksOverview[] = [
@@ -226,8 +231,8 @@ class DashboardController extends Controller
             $complete = TaskManagement::where('overview', $cal1->id)->count();
             $totalTask = TaskManagement::count();
         } else {
-            $complete = TaskManagement::where('assigned_to', $user->id)->where('overview', $cal1->id)->count();
-            $totalTask = TaskManagement::where('assigned_to', $user->id)->count();
+            $complete = TaskManagement::where(function ($query) use ($user) {$query->where('assigned_to', $user->id)->orWhere('created_by', $user->id)->orWhereRaw("FIND_IN_SET(?, collaboration)", [$user->id]);})->where('overview', $cal1->id)->count();
+            $totalTask = TaskManagement::where(function ($query) use ($user) {$query->where('assigned_to', $user->id)->orWhere('created_by', $user->id)->orWhereRaw("FIND_IN_SET(?, collaboration)", [$user->id]);})->count();
         }
 
         $totalAns = 0;

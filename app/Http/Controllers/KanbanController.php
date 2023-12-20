@@ -23,23 +23,23 @@ class KanbanController extends Controller
             if ($user->id == 1) {
                 $tasks = TaskManagement::where('status', $status->id)->get();
             } else {
-                $tasks = TaskManagement::where('assigned_to', $user->id)->where('status', $status->id)->get();
+                $tasks = TaskManagement::where(function ($query) use ($user) {$query->where('assigned_to', $user->id)->orWhere('created_by', $user->id)->orWhereRaw("FIND_IN_SET(?, collaboration)", [$user->id]);})->where('status', $status->id)->get();
             }
-            foreach ($tasks as $tsk) {
+            foreach ($tasks as $key_task => $tsk) {
                 if ($tsk->status) {
                     $data = TaskManagementStatus::select('status_name')->where('id', $tsk->status)->first();
                     if ($data !== null) {
                         $tsk['statusName'] = $data->status_name;
                     }
                 }
-                if ($tsk->assigned_to) {
-                    $users = User::select('fname')->where('id', $tsk->assigned_to)->first();
-                    if ($users) {
-                        $tsk['assigned_to_name'] = $users->fname;
-                    } else {
-                        $tsk['assigned_to_name'] = 'SuperAdmin';
-                    }
-                }
+                // if ($tsk->assigned_to) {
+                //     $users = User::select('fname')->where('id', $tsk->assigned_to)->first();
+                //     if ($users) {
+                //         $tsk['assigned_to_name'] = $users->fname;
+                //     } else {
+                //         $tsk['assigned_to_name'] = 'SuperAdmin';
+                //     }
+                // }
                 if ($tsk->order_id) {
                     $orderDta = OrderManagement::select('order_name')->where('id', $tsk->order_id)->first();
                     if ($orderDta) {
@@ -47,6 +47,22 @@ class KanbanController extends Controller
                     } else {
                         $tsk['order_name'] = [];
                     }
+                }
+                if ($tsk->collaboration) {
+                    $userDetails = [];
+                    $collaborationIds = explode(',', $tsk->collaboration);
+                    $users = User::whereIn('id', $collaborationIds)->get();
+                    if ($users) {
+                        foreach ($users as $user) {
+                            $userDetails[] = [
+                                'id' => $user->id,
+                                'name' => $user->fname . ' ' . $user->lname,
+                                'email' => $user->email,
+                                'profile' => $user->profile,
+                            ];
+                        }
+                    }
+                    $tasks[$key_task]['userDetails'] = $userDetails;
                 }
             }
             $taskData[] = [
@@ -78,7 +94,7 @@ class KanbanController extends Controller
                 if ($user->id == 1) {
                     $tasks = TaskManagement::where('status', $status->id)->get();
                 } else {
-                    $tasks = TaskManagement::where('assigned_to', $user->id)->where('status', $status->id)->get();
+                    $tasks = TaskManagement::where(function ($query) use ($user) {$query->where('assigned_to', $user->id)->orWhere('created_by', $user->id)->orWhereRaw("FIND_IN_SET(?, collaboration)", [$user->id]);})->where('status', $status->id)->get();
                 }
 
                 $taskData[] = [

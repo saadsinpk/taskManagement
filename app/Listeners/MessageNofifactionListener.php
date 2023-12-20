@@ -20,14 +20,14 @@ class MessageNofifactionListener
     /**
      * Handle the event.
      */
-    // public function handle(MessageNotifaction $event): void
-    // {
-    //     $user = $event->user;
-    //     $notifaction = $event->notifaction;
+    public function handle(MessageNotifaction $event): void
+    {
+        $user = $event->user;
+        $notifaction = $event->notifaction;
 
-    //     // Broadcast the event to a channel
-    //     Broadcast::channel('notifaction.' . $user->id, function ($user) use ($notifaction) {
-    //         return $notifaction;
-    //     });
-    // }
+        // Broadcast the event to a channel
+        Broadcast::channel('notifaction.' . $user->id, function ($user) use ($notifaction) {
+            return $notifaction;
+        });
+    }
 }

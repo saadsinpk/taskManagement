@@ -280,30 +280,35 @@ class OrderManagementController extends Controller
                         // Other task fields here
                     ]);
 
-                    $assignedToIDs = explode(',', $request->collaboration);
+                    $collaborations = $request->collaboration;
 
-                    foreach ($assignedToIDs as $assignedToID) {
-                        Notification::create([
-                            'user_id' => $assignedToID,
-                            'type' => 'TaskAssigned',
-                            'notifiable_id' => $newTask->id,
-                            'notifiable_type' => TaskManagement::class,
-                            'data' =>  $order->id,
-                            'read_at' => '0',
-                        ]);
+                    for ($i = 0; $i < count($collaborations); $i++) {
+                        $collaboration = $collaborations[$i];
+                        $assignedToIDs = explode(',', $collaboration);
 
-                        $received = intval($assignedToID);
+                        foreach ($assignedToIDs as $assignedToID) {
+                            Notification::create([
+                                'user_id' => $assignedToID,
+                                'type' => 'TaskAssigned',
+                                'notifiable_id' => $newTask->id,
+                                'notifiable_type' => TaskManagement::class,
+                                'data' =>  $order->id,
+                                'read_at' => '0',
+                            ]);
 
-                        $startOfWeek = now()->startOfWeek();
-                        $endOfWeek = now()->endOfWeek();
-                        $count = Notification::where('user_id', $received)->whereBetween('created_at', [$startOfWeek, $endOfWeek])->where('read_at', 0)->count();
-                        $userNotificationData = [
-                            'id' => $received,
-                            'count' => $count,
-                        ];
+                            $received = intval($assignedToID);
 
-                        // Trigger the event
-                        // event(new NewNotificationEvent($userNotificationData));
+                            $startOfWeek = now()->startOfWeek();
+                            $endOfWeek = now()->endOfWeek();
+                            $count = Notification::where('user_id', $received)->whereBetween('created_at', [$startOfWeek, $endOfWeek])->where('read_at', 0)->count();
+                            $userNotificationData = [
+                                'id' => $received,
+                                'count' => $count,
+                            ];
+
+                            // Trigger the event
+                            // event(new NewNotificationEvent($userNotificationData));
+                        }
                     }
                 } else {
                     $task = TaskManagement::find($taskId);

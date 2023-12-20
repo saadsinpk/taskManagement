@@ -22,6 +22,14 @@ import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 window.Pusher = Pusher;
 
+window.Echo = new Echo({
+    broadcaster: 'pusher',
+    key: process.env.MIX_PUSHER_APP_KEY,
+    cluster: process.env.MIX_PUSHER_APP_CLUSTER,
+    encrypted: true,
+    wsHost: 'localhost', // WebSocket server host
+    wsPort: 6001, // WebSocket server port
+});
 // window.Echo = new Echo({
 //     broadcaster: 'pusher',
 //     key: process.env.MIX_PUSHER_APP_KEY,
@@ -40,16 +48,16 @@ window.Pusher = Pusher;
 //         // Update the chat interface with the new message
 //     });
 
-window.Echo = new Echo({
-    broadcaster: 'pusher',
-    key: import.meta.env.VITE_PUSHER_APP_KEY,
-    wsHost: import.meta.env.VITE_PUSHER_HOST ? ? `ws-${import.meta.env.VITE_PUSHER_APP_CLUSTER}.pusher.com`,
-    wsPort: import.meta.env.VITE_PUSHER_PORT ? ? 80,
-    wssPort: import.meta.env.VITE_PUSHER_PORT ? ? 443,
-    forceTLS: (
-        import.meta.env.VITE_PUSHER_SCHEME ? ? 'https') === 'https',
-    enabledTransports: ['ws', 'wss'],
-});
+// window.Echo = new Echo({
+//     broadcaster: 'pusher',
+//     key: import.meta.env.VITE_PUSHER_APP_KEY,
+//     wsHost: import.meta.env.VITE_PUSHER_HOST ? ? `ws-${import.meta.env.VITE_PUSHER_APP_CLUSTER}.pusher.com`,
+//     wsPort: import.meta.env.VITE_PUSHER_PORT ? ? 80,
+//     wssPort: import.meta.env.VITE_PUSHER_PORT ? ? 443,
+//     forceTLS: (
+//         import.meta.env.VITE_PUSHER_SCHEME ? ? 'https') === 'https',
+//     enabledTransports: ['ws', 'wss'],
+// });
 
 // window.Echo.channel('my-channel')
 //     .listen('MyEvent', (event) => {

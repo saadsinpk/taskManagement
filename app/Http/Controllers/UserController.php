@@ -117,7 +117,7 @@ class UserController extends Controller
             'fname' => 'required',
             'lname' => 'required',
             'role' => 'required',
-            'email' => 'required|email',
+            'email' => 'required|email|unique:users', // ensure email is unique in 'users' table
             'password' => 'required',
         ]);
         if ($validator->fails()) {
